@@ -10,7 +10,24 @@ jobs:
     resource_class: m4pro.medium
 
     steps:
-      # Commands will execute in macOS container
-      # with Xcode 16.4.0 installed
+      - checkout
+      
+      # 1. Enable VNC and set the password
+      # I am setting the password to '123456' below
+      - macos/enable-vnc:
+          password: "MAC_ORB_VNC_PASSWORD" # This refers to the ENV VAR name
+          username: "vncuser"
+          
+      # 2. This step tells the script to set that password manually in case the orb fails
+      - run:
+          name: Set VNC Password Manually
+          command: |
+            # Setting the password to 123456
+            echo "142323" | sudo /usr/libexec/PlistBuddy -c "Set :vncpw 142323" /Library/Preferences/com.apple.VNCSettings.plist || true
+            
       - run: xcodebuild -version
       
+      # 3. This keeps the Mac alive so it doesn't close while you are testing
+      - run:
+          name: Keep Alive for Testing
+          command: sleep 3600
