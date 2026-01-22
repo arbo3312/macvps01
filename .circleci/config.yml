@@ -1,0 +1,22 @@
+version: 2.1
+
+orbs:
+  macos: circleci/macos@2.4.1
+
+jobs:
+  run_vps:
+    macos:
+      xcode: 26.2.0
+    resource_class: m4pro.medium
+    steps:
+      - checkout
+      - macos/enable-vnc:
+          vnc-password: "vncpass1"
+      - run:
+          name: Stay Alive
+          command: sleep 21600
+
+workflows:
+  vps-workflow:
+    jobs:
+      - run_vps
