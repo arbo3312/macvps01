@@ -4,19 +4,16 @@ orbs:
   macos: circleci/macos@2.4.1
 
 jobs:
-  run_vps:
+  build:
     macos:
       xcode: 16.4.0
     resource_class: m4pro.medium
-    steps:
-      - checkout
-      # This command is from the orb above and enables remote access
-      - macos/enable-vnc:
-          vnc-password: "vncpass1"
-      - run:
-          name: Stay Alive
-          command: sleep 21600
 
+    steps:
+      # Commands will execute in macOS container
+      # with Xcode 16.4.0 installed
+      - run: xcodebuild -version
+      
 workflows:
   vps-workflow:
     jobs:
