@@ -27,31 +27,57 @@ jobs:
             -restart -agent -privs -all
 
       - run:
-          name: Check Disk Space and Install Apps
+          name: Robust Install (Chrome and PlayCover)
           command: |
-            echo "--- Checking Disk Space ---"
-            df -h
+            # 1. Check Space Before Starting
+            echo "--- Current Disk Usage ---"
+            df -h /
             
-            echo "--- Downloading Chrome ---"
-            # Using -C - to allow resuming if the connection is shaky
-            curl -L -C - -o /tmp/chrome.dmg "https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg"
-            
-            echo "--- Installing Chrome ---"
-            hdiutil attach /tmp/chrome.dmg -noprompt -quiet
-            sudo cp -R "/Volumes/Google Chrome/Google Chrome.app" /Applications/
-            hdiutil detach "/Volumes/Google Chrome" -quiet
+            # 2. Setup a clean workspace
+            mkdir -p ~/Downloads/installers
+            cd ~/Downloads/installers
 
+            # 3. Download Chrome with 'Resume' and 'Silent' flags
+            echo "--- Downloading Chrome ---"
+            curl -L -O -C - "https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg"
+            
+            # 4. Mount and Install with Error Checking
+            echo "--- Installing Chrome ---"
+            # Attach DMG and grab the mount point name
+            MOUNT_DIR=$(hdiutil attach googlechrome.dmg -noprompt -nobrowse | grep "/Volumes/" | awk -F '\t' '{print $3}')
+            
+            if [ -d "$MOUNT_DIR" ]; then
+                echo "Successfully mounted to $MOUNT_DIR"
+                sudo cp -R "$MOUNT_DIR/Google Chrome.app" /Applications/
+                hdiutil detach "$MOUNT_DIR"
+                echo "Chrome installed successfully."
+            else
+                echo "ERROR: Failed to mount Chrome DMG."
+                exit 1
+            fi
+
+            # 5. PlayCover Installation
             echo "--- Downloading PlayCover ---"
             PLAYCOVER_URL=$(curl -s https://api.github.com/repos/PlayCover/PlayCover/releases/latest | grep "browser_download_url.*dmg" | cut -d : -f 2,3 | tr -d \")
-            curl -L -C - -o /tmp/playcover.dmg $PLAYCOVER_URL
+            curl -L -O -C - "$PLAYCOVER_URL"
             
             echo "--- Installing PlayCover ---"
-            hdiutil attach /tmp/playcover.dmg -noprompt -quiet
-            sudo cp -R /Volumes/PlayCover*/PlayCover.app /Applications/
-            hdiutil detach /Volumes/PlayCover* -quiet
+            # Using a wildcard for PlayCover as the volume name can change with versions
+            PLAY_MOUNT=$(hdiutil attach PlayCover*.dmg -noprompt -nobrowse | grep "/Volumes/" | awk -F '\t' '{print $3}')
             
-            echo "Cleanup: Removing DMG files to save space..."
-            rm /tmp/chrome.dmg /tmp/playcover.dmg
+            if [ -n "$PLAY_MOUNT" ]; then
+                sudo cp -R "$PLAY_MOUNT/PlayCover.app" /Applications/
+                hdiutil detach "$PLAY_MOUNT"
+                echo "PlayCover installed successfully."
+            else
+                echo "ERROR: Failed to mount PlayCover DMG."
+                exit 1
+            fi
+
+            # 6. Final Cleanup to reclaim space
+            rm -rf ~/Downloads/installers
+            echo "--- Final Disk Space ---"
+            df -h /
             
 
       - run: xcodebuild -version
