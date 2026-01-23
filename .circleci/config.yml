@@ -61,7 +61,16 @@ jobs:
 
             # 3. Install PlayCover
             echo "--- Downloading PlayCover ---"
-            PLAYCOVER_URL=$(curl -s https://api.github.com/repos/PlayCover/PlayCover/releases/latest | grep "browser_download_url.*dmg" | cut -d : -f 2,3 | tr -d \")
+            # We use -s (silent) and a more precise sed command to extract the URL
+            PLAYCOVER_URL=$(curl -s https://api.github.com/repos/PlayCover/PlayCover/releases/latest | grep "browser_download_url.*dmg" | head -n 1 | cut -d '"' -f 4)
+            
+            echo "Target URL: $PLAYCOVER_URL" # This helps us see if the URL is correct in logs
+
+            # If the URL is empty, we use a hardcoded fallback to prevent the 'Malformed' error
+            if [ -z "$PLAYCOVER_URL" ]; then
+                PLAYCOVER_URL="https://github.com/PlayCover/PlayCover/releases/download/3.0.0/PlayCover_3.0.0.dmg"
+            fi
+
             curl -L -o playcover.dmg "$PLAYCOVER_URL"
             
             echo "--- Attaching PlayCover DMG ---"
